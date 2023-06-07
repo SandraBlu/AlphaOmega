@@ -32,6 +32,8 @@ public:
 
 	AAOCharacter();
 
+	
+
 	// Overridden from Ability System Interface
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 
@@ -56,5 +58,34 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "TargetData")
 	void ApplyGEtoTarget(const FGameplayEffectSpecHandle& GESpec, const FGameplayAbilityTargetDataHandle& TargetData);
 
+//Inventory Comp
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	UAOInventoryComponent* PlayerInventory;
 
+	UFUNCTION(BlueprintCallable)
+	void SetLootSource(class UAOInventoryComponent* NewLootSource);
+
+	
+ 	UFUNCTION(BlueprintPure, Category = "Loot")
+	bool IsLooting() const;
+
+ 	UFUNCTION(BlueprintCallable, Category = "Loot")
+	void LootItem(class UAOItem* ItemToGive);
+
+protected:
+	
+	//Looting--------------------------------------------
+	
+	UFUNCTION()
+ 	void BeginLootingNPC(class AAOCharacter* Character);
+
+	//Inventory we are currently looting from
+	UPROPERTY(BlueprintReadOnly)
+	UAOInventoryComponent* LootSource;
+	
+ 	UFUNCTION()
+ 	void OnLootSourceDestroyed(AActor* DestroyedActor);
+ 	
+ 	UFUNCTION()
+ 	void ShowHideLootMenu();
 };

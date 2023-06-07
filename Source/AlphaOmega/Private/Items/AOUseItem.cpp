@@ -2,17 +2,34 @@
 
 
 #include "Items/AOUseItem.h"
+#include "Character/AOPlayer.h"
+#include "Framework/AOPlayerController.h"
+#include "Components/AOInventoryComponent.h"
 
 #define LOCTEXT_NAMESPACE "Use Item"
 UAOUseItem::UAOUseItem()
 {
-	HealAmount = 30.f;
 	UseActionText = LOCTEXT("ItemUseActionText", "Consume");
 }
 
 void UAOUseItem::Use(class AAOPlayer* Character)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Used Item"));
+	if (Character)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Used Item"));
+		if (AAOPlayerController* PC = Cast<AAOPlayerController>(Character->GetController()))
+		{
+			PC->ShowNotification(FText::Format(LOCTEXT("UsedItemText", "Used {ItemName}, restored {RestoreAmount}."), ItemDisplayName, RestoreAmount));
+		}
+		else
+		{
+			PC->ShowNotification(FText::Format(LOCTEXT("FullAttributeText", "No need to use {ItemName}. Already FULL. "), ItemDisplayName, RestoreAmount));
+		}
+	}
+	if (UAOInventoryComponent* Inventory = Character->PlayerInventory)
+	{
+		Inventory->ConsumeItem(this, 1);
+	}
 }
 
 #undef LOCTEXT_NAMESPACE

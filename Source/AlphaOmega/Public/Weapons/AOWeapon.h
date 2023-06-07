@@ -68,6 +68,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Montages")
 	UAnimMontage* EquipAnim;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Montages")
+	float ADSTime;
+
 	/** weapon is being equipped by owner pawn */
 	virtual void OnEquip();
 
@@ -104,6 +107,10 @@ public:
 	/** current weapon type */
 	UPROPERTY(EditDefaultsOnly, Category = "Settings")
 	EWeaponType CurrentType;
+
+	/** get weapon mesh (needs pawn owner to determine variant) */
+	UFUNCTION(BlueprintPure, Category = "Weapon")
+	USkeletalMeshComponent* GetWeaponMesh() const;
 
 protected:
 
@@ -155,10 +162,6 @@ protected:
 		
 	UFUNCTION(BlueprintImplementableEvent)
 	void CreateForceFields(const FVector& FieldLocation);
-
-	/** get weapon mesh (needs pawn owner to determine variant) */
-	UFUNCTION(BlueprintPure, Category = "Weapon")
-	USkeletalMeshComponent* GetWeaponMesh() const;
 
 	/** get pawn owner */
 	UFUNCTION(BlueprintCallable, Category = "Weapon")

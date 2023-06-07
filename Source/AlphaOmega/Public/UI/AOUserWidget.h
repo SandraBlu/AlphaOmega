@@ -10,38 +10,38 @@
 #include "AOUserWidget.generated.h"
 
 class UAOCoreComponent;
-
+class UAbilitySystemComponent;
 
 USTRUCT(BlueprintType)
-struct FAOGameplayEffectUIData
+struct FGEffectUIData
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="AOGameplayEffect")
-	float StartTime;
+		UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AOGEffect")
+		float StartTime;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="AOGameplayEffect")
-	float TotalDuration;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AOGEffect")
+		float TotalDuration;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="AOGameplayEffect")
-	float ExpectedEndTime;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AOGEffect")
+		float ExpectedEndTime;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="AOGameplayEffect")
-	int32 StackCount;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AOGEffect")
+		int32 StackCount;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="AOGameplayEffect")
-	int32 StackLimitCount;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "AOGEffect")
+		int32 StackLimitCount;
 
-	FAOGameplayEffectUIData(const float StartTime, const float TotalDuration, const float ExpectedEndTime, const int32 StackCount, const int32 StackLimitCount)
+	FGEffectUIData(const float StartTime, const float TotalDuration, const float ExpectedEndTime, const int32 StackCount, const int32 StackLimitCount)
 		: StartTime(StartTime),
-		  TotalDuration(TotalDuration),
-		  ExpectedEndTime(ExpectedEndTime),
-		  StackCount(StackCount),
-		  StackLimitCount(StackLimitCount)
+		TotalDuration(TotalDuration),
+		ExpectedEndTime(ExpectedEndTime),
+		StackCount(StackCount),
+		StackLimitCount(StackLimitCount)
 	{
 	}
 
-	FAOGameplayEffectUIData(): StartTime(0), TotalDuration(0), ExpectedEndTime(0), StackCount(0), StackLimitCount(0)
+	FGEffectUIData() : StartTime(0), TotalDuration(0), ExpectedEndTime(0), StackCount(0), StackLimitCount(0)
 	{
 	}
 };
@@ -56,27 +56,29 @@ class ALPHAOMEGA_API UAOUserWidget : public UUserWidget
 	
 public:
 
-	UPROPERTY(BlueprintReadOnly, Category = "UI")
+	public:
+
+	UPROPERTY(BlueprintReadOnly, Category = "AOUI")
 		AActor* OwnerActor;
 
-	UPROPERTY(BlueprintReadOnly, Category = "UI")
+	UPROPERTY(BlueprintReadOnly, Category = "AOUI")
 		UAOCoreComponent* OwnerCoreComponent;
 
 	/** Initialize or update references to owner actor and additional actor components (such as AbilitySystemComponent) and cache them for this instance of user widget. */
-	UFUNCTION(BlueprintCallable, Category = "UI")
+	UFUNCTION(BlueprintCallable, Category = "AOUI")
 		virtual void SetOwnerActor(AActor* Actor);
 
 	/** Returns reference to OwnerActor for this user widget, if it has been initialized. */
-	UFUNCTION(BlueprintCallable, Category = "UI")
+	UFUNCTION(BlueprintCallable, Category = "AOUI")
 		virtual AActor* GetOwningActor() const { return OwnerActor; }
 
 	/** Returns reference to OwnerCoreComponent for this user widget, if it has been initialized. */
-	UFUNCTION(BlueprintCallable, Category = "UI")
+	UFUNCTION(BlueprintCallable, Category = "AOUI")
 		virtual UAOCoreComponent* GetOwningCoreComponent() const { return OwnerCoreComponent; }
 
 	/** Returns reference to AbilitySystemComponent for this user widget, if it has been initialized. */
-	UFUNCTION(BlueprintCallable, Category = "UI")
-		virtual UAbilitySystemComponent* GetOwningAbilitySystemComponent() const { return AbilitySystemComp; }
+	UFUNCTION(BlueprintCallable, Category = "AOUI")
+		virtual UAbilitySystemComponent* GetOwningAbilitySystemComponent() const { return AbilitySystemComponent; }
 
 	/**
 	 * Runs initialization logic for this UserWidget related to interactions with Ability System Component.
@@ -85,8 +87,8 @@ public:
 	 *
 	 * Usually called from NativeConstruct, but exposed there if other classes needs to run initialization logic again to update references.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	virtual void InitializeWithAbilitySystem(UPARAM(ref) const UAbilitySystemComponent* AbilitySystemComponent);
+	UFUNCTION(BlueprintCallable, Category = "AOUI")
+		virtual void InitializeWithAbilitySystem(UPARAM(ref) const UAbilitySystemComponent* AbilitySystemComp);
 
 	/** Clears off any ASC delegates and dispose AbilitySystemComponent pointer */
 	void ResetAbilitySystem();
@@ -102,60 +104,60 @@ public:
 	 *
 	 * Run initialization logic that depends on Ability System here. (like setting initial state for user widgets based on attributes value)
 	 */
-	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
-	void OnAbilitySystemInitialized();
+	UFUNCTION(BlueprintImplementableEvent, Category = "AOUI")
+		void OnAbilitySystemInitialized();
 
 	/** Event triggered whenever an attribute value is changed on Owner Actor's ASC */
-	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
-	void OnAttributeChange(FGameplayAttribute Attribute, float NewValue, float OldValue);
-
-	/** Event triggered by Companion Core Component whenever a gameplay effect time is changed (for instance when duration is refreshed) */
-	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
-	void OnGameplayEffectTimeChange(FGameplayTagContainer AssetTags, FGameplayTagContainer GrantedTags, FActiveGameplayEffectHandle ActiveHandle, float NewStartTime, float NewDuration);
-
-	/** Event triggered by Companion Core Component whenever a gameplay effect is added */
-	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
-	void OnGameplayEffectAdded(FGameplayTagContainer AssetTags, FGameplayTagContainer GrantedTags, FActiveGameplayEffectHandle ActiveHandle, FAOGameplayEffectUIData EffectData);
+	UFUNCTION(BlueprintImplementableEvent, Category = "AOUI")
+		void OnAttributeChange(FGameplayAttribute Attribute, float NewValue, float OldValue);
 
 	/** Event triggered by Companion Core Component whenever a gameplay effect is added / removed */
-	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
-	void OnGameplayEffectStackChange(FGameplayTagContainer AssetTags, FGameplayTagContainer GrantedTags, FActiveGameplayEffectHandle ActiveHandle, int32 NewStackCount, int32 OldStackCount);
+	UFUNCTION(BlueprintImplementableEvent, Category = "AOUI")
+		void OnGameplayEffectStackChange(FGameplayTagContainer AssetTags, FGameplayTagContainer GrantedTags, FActiveGameplayEffectHandle ActiveHandle, int32 NewStackCount, int32 OldStackCount);
+
+	/** Event triggered by Companion Core Component whenever a gameplay effect time is changed (for instance when duration is refreshed) */
+	UFUNCTION(BlueprintImplementableEvent, Category = "AOUI")
+		void OnGameplayEffectTimeChange(FGameplayTagContainer AssetTags, FGameplayTagContainer GrantedTags, FActiveGameplayEffectHandle ActiveHandle, float NewStartTime, float NewDuration);
+
+	/** Event triggered by Companion Core Component whenever a gameplay effect is added */
+	UFUNCTION(BlueprintImplementableEvent, Category = "AOUI")
+		void OnGameplayEffectAdded(FGameplayTagContainer AssetTags, FGameplayTagContainer GrantedTags, FActiveGameplayEffectHandle ActiveHandle, FGEffectUIData EffectData);
 
 	/** Event triggered by Companion Core Component whenever a gameplay effect is removed */
-	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
-	void OnGameplayEffectRemoved(FGameplayTagContainer AssetTags, FGameplayTagContainer GrantedTags, FActiveGameplayEffectHandle ActiveHandle, FAOGameplayEffectUIData EffectData);
+	UFUNCTION(BlueprintImplementableEvent, Category = "AOUI")
+		void OnGameplayEffectRemoved(FGameplayTagContainer AssetTags, FGameplayTagContainer GrantedTags, FActiveGameplayEffectHandle ActiveHandle, FGEffectUIData EffectData);
 
 	/** Event triggered by Companion Core Component whenever a tag is added or removed (but not if just count is increased. Only for 'new' and 'removed' events) */
-	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
-	void OnGameplayTagChange(FGameplayTag GameplayTag, int32 NewTagCount);
+	UFUNCTION(BlueprintImplementableEvent, Category = "AOUI")
+		void OnGameplayTagChange(FGameplayTag GameplayTag, int32 NewTagCount);
 
 	/** Event triggered by Companion Core component when an ability with a valid cooldown is committed and cooldown is applied */
-	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
+	UFUNCTION(BlueprintImplementableEvent, Category = "AOUI")
 		void OnCooldownStart(UGameplayAbility* Ability, const FGameplayTagContainer CooldownTags, float TimeRemaining, float Duration);
 
 	/** Event triggered by Companion Core Component when a cooldown gameplay tag is removed, meaning cooldown expired */
-	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
+	UFUNCTION(BlueprintImplementableEvent, Category = "AOUI")
 		void OnCooldownEnd(UGameplayAbility* Ability, FGameplayTag CooldownTag, float Duration);
 
 	/** Helper function to return percentage from Attribute / MaxAttribute */
-	UFUNCTION(BlueprintPure, Category = "UI")
-	float GetPercentForAttributes(FGameplayAttribute Attribute, FGameplayAttribute MaxAttribute) const;
+	UFUNCTION(BlueprintPure, Category = "AOUI")
+		float GetPercentForAttributes(FGameplayAttribute Attribute, FGameplayAttribute MaxAttribute) const;
 
 	/** Returns the current value of an attribute (base value) from owning actor Ability System (if it has any). That is, the value of the attribute with no stateful modifiers */
-	UFUNCTION(BlueprintCallable, Category = "UI")
-	virtual float GetAttributeValue(FGameplayAttribute Attribute) const;
+	UFUNCTION(BlueprintCallable, Category = "AOUI")
+		virtual float GetAttributeValue(FGameplayAttribute Attribute) const;
 
 	/** Triggered by ASC and handle / broadcast Attributes change */
 	virtual void OnAttributeChanged(const FOnAttributeChangeData& Data);
+
+	/** Triggered by ASC when GEs are added */
+	virtual void OnActiveGameplayEffectAdded(UAbilitySystemComponent* Target, const FGameplayEffectSpec& SpecApplied, FActiveGameplayEffectHandle ActiveHandle);
 
 	/** Triggered by ASC when GEs stack count changes */
 	virtual void OnActiveGameplayEffectStackChanged(FActiveGameplayEffectHandle ActiveHandle, int32 NewStackCount, int32 PreviousStackCount);
 
 	/** Triggered by ASC when GEs stack count changes */
 	virtual void OnActiveGameplayEffectTimeChanged(FActiveGameplayEffectHandle ActiveHandle, float NewStartTime, float NewDuration);
-
-	/** Triggered by ASC when GEs are added */
-	virtual void OnActiveGameplayEffectAdded(UAbilitySystemComponent* Target, const FGameplayEffectSpec& SpecApplied, FActiveGameplayEffectHandle ActiveHandle);
 
 	/** Triggered by ASC when any GEs are removed */
 	virtual void OnAnyGameplayEffectRemoved(const FActiveGameplayEffect& EffectRemoved);
@@ -193,13 +195,12 @@ public:
 	/** Trigger from ASC whenever an cooldown tag stack changes, and stack count is 0 (cooldown end) */
 	virtual void HandleCooldownEnd(UGameplayAbility* Ability, FGameplayTag CooldownTag, float Duration);
 
-
-	FAOGameplayEffectUIData GetGameplayEffectUIData(FActiveGameplayEffectHandle ActiveHandle);
+	FGEffectUIData GetGameplayEffectUIData(FActiveGameplayEffectHandle ActiveHandle);
 
 protected:
 
 	UPROPERTY()
-		UAbilitySystemComponent* AbilitySystemComp;
+		UAbilitySystemComponent* AbilitySystemComponent;
 
 private:
 

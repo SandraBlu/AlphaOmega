@@ -12,13 +12,18 @@
 #include "EnhancedInputComponent.h"
 #include "Items/AOEquipItem.h"
 #include "Items/AOGearItem.h"
+#include "Items/ThrowableItem.h"
 #include "Framework/AOPlayerController.h"
 #include "Items/AOPickup.h"
 #include "Components/CapsuleComponent.h"
 #include "Items/AOWeaponItem.h"
 #include "Weapons/AOWeapon.h"
+#include "Animation/AnimMontage.h"
+#include "Weapons/ThrowableWeapon.h"
 
 #define LOCTEXT_NAMESPACE "AOCharacter"
+
+static FName NAME_ADSSocket("ADSSocket");
 
 AAOPlayer::AAOPlayer()
 {
@@ -53,11 +58,14 @@ AAOPlayer::AAOPlayer()
 	InteractCheckFrequency = 0.f;
 	TraceDistance = 1000.f;
 
-	PlayerInventory = CreateDefaultSubobject<UAOInventoryComponent>("InventoryComp");
-	PlayerInventory->SetCapacity(20);
-	PlayerInventory->SetWeightCapacity(80.f);
-
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
+	GetCharacterMovement()->MaxWalkSpeed = 500.f;
+
+	bIsAiming = false;
+
+	JogSpeed = 500.f;
+	SprintSpeed = 800.f;
+
 }
 
 void AAOPlayer::BeginPlay()
@@ -75,62 +83,23 @@ void AAOPlayer::BeginPlay()
 
 void AAOPlayer::Tick(float DeltaTime)
 {
+	Super::Tick(DeltaTime);
+
 	PerformInteractCheck();
-}
 
-void AAOPlayer::SetLootSource(class UAOInventoryComponent* NewLootSource)
-{
-	//if item is destroyed; stop looting
-	if (NewLootSource && NewLootSource->GetOwner())
-	{
-		NewLootSource->GetOwner()->OnDestroyed.AddUniqueDynamic(this, &AAOPlayer::OnLootSourceDestroyed);
-	}
-	LootSource = NewLootSource;
-	ShowHideLootMenu();
-	UE_LOG(LogTemp, Warning, TEXT("set  new loot source"));
-
-	/*for AI
-	//  	if (NewLootSource)
-	//  	{
-	//  		if (AAOCharacter* Character = Cast<AAOCharacter>(NewLootSource->GetOwner()))
-	// 		{
-	// 			Character->SetLifeSpan(120.f);
-	// 		}
-	//  	}
-	*/
-	
-}
-
-bool AAOPlayer::IsLooting() const
-{
-	return LootSource != nullptr;
-}
-
-void AAOPlayer::OnLootSourceDestroyed(AActor* DestroyedActor)
-{
-	if (LootSource && DestroyedActor == LootSource->GetOwner())
-	{
-		SetLootSource(nullptr);
-	}
-}
-
-void AAOPlayer::ShowHideLootMenu()
-{
-	if (AAOPlayerController* PC = Cast<AAOPlayerController>(GetController()))
-	{
-		if (PC)
-		{
-			if (LootSource)
-			{
-				UE_LOG(LogTemp, Warning, TEXT("On Rep!!!!!!!! new loot source"));
-				PC->ShowLootMenu(LootSource);
-			}
-			else
-			{
-				PC->HideLootMenu();
-			}
-		}
-	}
+// 	const float DesiredFOV = IsAiming() ? 70.f : 100.f;
+// 	FollowCam->SetFieldOfView(FMath::FInterpTo(FollowCam->FieldOfView, DesiredFOV, DeltaTime, 10.f));
+// 
+// 	if (EquippedWeapon)
+// 	{
+// 		const FVector ADSLocation = EquippedWeapon->GetWeaponMesh()->GetSocketLocation(NAME_ADSSocket);
+// 		const FVector DefaultCameraLocation = GetMesh()->GetSocketLocation(FName("CameraSocket"));
+// 
+// 		FVector CameraLoc = bIsAiming ? ADSLocation : DefaultCameraLocation;
+// 
+// 		const float InterpSpeed = FVector::Dist(ADSLocation, DefaultCameraLocation) / EquippedWeapon->ADSTime;
+// 		FollowCam->SetWorldLocation(FMath::VInterpTo(FollowCam->GetComponentLocation(), CameraLoc, DeltaTime, InterpSpeed));
+ //	}
 }
 
 void AAOPlayer::PerformInteractCheck()
@@ -230,24 +199,52 @@ void AAOPlayer::OnWeaponEquipped()
 	}
 }
 
-void AAOPlayer::LootItem(class UAOItem* ItemToGive)
+
+void AAOPlayer::PlayTossFX(class UAnimMontage* TossMontage)
 {
-	if (PlayerInventory && LootSource && ItemToGive && LootSource->HasItem(ItemToGive->GetClass(), ItemToGive->GetQuantity()))
+	PlayAnimMontage(TossMontage);
+}
+
+class UThrowableItem* AAOPlayer::GetThrowable() const
+{
+	UThrowableItem* EquippedThrowable = nullptr;
+
+	if (EquippedItems.Contains(EEquipSlot::EIS_Throwable))
 	{
-		const FItemAddResult AddResult = PlayerInventory->TryAddItem(ItemToGive);
-		PlayerInventory->OnInventoryUpdated.Broadcast();
-		if (AddResult.ActualAmountGiven > 0)
+		EquippedThrowable = Cast<UThrowableItem>(*EquippedItems.Find(EEquipSlot::EIS_Throwable));
+	}
+	return EquippedThrowable;
+}
+
+void AAOPlayer::SpawnThrowable()
+{
+	if (UThrowableItem* CurrentThrowable = GetThrowable())
+	{
+		if (CurrentThrowable->ThrowableClass)
 		{
-			LootSource->ConsumeItem(ItemToGive, AddResult.ActualAmountGiven);
-		}
-		else
-		{
-			if (AAOPlayerController* PC = Cast<AAOPlayerController>(GetController()))
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = SpawnParams.Instigator = this;
+			SpawnParams.bNoFail = true;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+			FVector EyesLoc;
+			FRotator EyesRot;
+			GetController()->GetPlayerViewPoint(EyesLoc, EyesRot);
+			//Move spawn point to slightly in front of player to avoid self collision
+			EyesLoc = (EyesRot.Vector() * 20.f) + EyesLoc;
+
+			if (AThrowableWeapon* ThrowableWeapon = GetWorld()->SpawnActor<AThrowableWeapon>(CurrentThrowable->ThrowableClass, FTransform(EyesRot, EyesLoc), SpawnParams))
 			{
-				PC->ShowNotification(AddResult.ErrorText);
+				PlayTossFX(CurrentThrowable->TossAnim);
 			}
+
 		}
 	}
+}
+
+bool AAOPlayer::CanUseThrowable() const
+{
+	return GetThrowable() != nullptr && GetThrowable()->ThrowableClass != nullptr;
 }
 
 bool AAOPlayer::IsInteracting() const
@@ -270,6 +267,7 @@ void AAOPlayer::UseItem(class UAOItem* Item)
  
  	if (Item)
  	{
+		Item->OnUse(this);
  		Item->Use(this);
  	}
 }
@@ -396,6 +394,20 @@ void AAOPlayer::UnequipWeapon()
 	}
 }
 
+bool AAOPlayer::CanAim() const
+{
+	return EquippedWeapon != nullptr;
+}
+
+void AAOPlayer::SetAiming(const bool bNewAiming)
+{
+	if ((bNewAiming && !CanAim()) || bNewAiming == bIsAiming)
+	{
+		return;
+	}
+	bIsAiming = bNewAiming;
+}
+
 class USkeletalMeshComponent* AAOPlayer::GetSlotSkeletalMeshComponent(const EEquipSlot Slot)
 {
 	if (PlayerMeshes.Contains(Slot))
@@ -430,20 +442,12 @@ void AAOPlayer::Look(const FInputActionValue& Value)
 
 void AAOPlayer::CrouchStart(const FInputActionValue& Value)
 {
-	Crouch(true);
+	Crouch(true);	
 }
 
 void AAOPlayer::CrouchStop(const FInputActionValue& Value)
-{
+{	
 	UnCrouch(true);
-}
-
-void AAOPlayer::SprintStart(const FInputActionValue& Value)
-{
-}
-
-void AAOPlayer::SprintStop(const FInputActionValue& Value)
-{
 }
 
 void AAOPlayer::StartInteract(const FInputActionValue& Value)
@@ -489,6 +493,45 @@ void AAOPlayer::DrawWeapon(const FInputActionValue& Value)
 	
 }
 
+void AAOPlayer::UseThrowable(const FInputActionValue& Value)
+{
+	if (CanUseThrowable())
+	{
+		if (UThrowableItem* Throwable = GetThrowable())
+		{
+			PlayAnimMontage(Throwable->TossAnim);
+			SpawnThrowable();
+
+			if (PlayerInventory)
+			{
+				PlayerInventory->ConsumeItem(Throwable, 1);
+			}
+			else
+			{
+				if (Throwable->GetQuantity() <= 1)
+				{
+					EquippedItems.Remove(EEquipSlot::EIS_Throwable);
+					OnEquippedItemsChanged.Broadcast(EEquipSlot::EIS_Throwable, nullptr);
+				}
+			}
+		}		
+	}
+}
+
+void AAOPlayer::StartAiming(const FInputActionValue& Value)
+{
+	if (CanAim())
+	{
+		SetAiming(true);
+	}
+
+}
+
+void AAOPlayer::StopAiming(const FInputActionValue& Value)
+{
+	SetAiming(false);
+}
+
 void AAOPlayer::OpenMenu(const FInputActionValue& Value)
 {
 }
@@ -509,8 +552,6 @@ void AAOPlayer::SetupPlayerInputComponent(class UInputComponent* PlayerInputComp
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &AAOPlayer::CrouchStart);
 		EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Completed, this, &AAOPlayer::CrouchStop);
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &AAOPlayer::SprintStart);
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &AAOPlayer::SprintStop);
 
 		//Interact
 		EnhancedInputComponent->BindAction(InterAction, ETriggerEvent::Started, this, &AAOPlayer::StartInteract);
@@ -522,7 +563,11 @@ void AAOPlayer::SetupPlayerInputComponent(class UInputComponent* PlayerInputComp
 
 		//Weapon
 		EnhancedInputComponent->BindAction(DrawWeaponAction, ETriggerEvent::Started, this, &AAOPlayer::DrawWeapon);
+		EnhancedInputComponent->BindAction(ThrowAction, ETriggerEvent::Started, this, &AAOPlayer::UseThrowable);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &AAOPlayer::StartAiming);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &AAOPlayer::StopAiming);
 	}
+	
 }
 
 #undef LOCTEXT_NAMESPACE

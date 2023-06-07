@@ -19,6 +19,7 @@ enum class EEquipSlot : uint8
 	EIS_Backpack UMETA(DisplayName = "Backpack"),
 	EIS_PrimaryWeapon UMETA(DisplayName = "Primary Weapon"),
 	EIS_SecondaryWeapon UMETA(DisplayName = "Secondary Weapon"),
+	EIS_Throwable UMETA(DisplayName = "Throwable"),
 	EIS_Canteen UMETA(DisplayName = "Canteen")
 };
 /**

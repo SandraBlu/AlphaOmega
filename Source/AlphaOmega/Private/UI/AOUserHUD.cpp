@@ -50,7 +50,7 @@ void UAOUserHUD::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 
 void UAOUserHUD::InitFromCharacter()
 {
-	if (!AbilitySystemComp)
+	if (!AbilitySystemComponent)
 	{
 		// Prevent calls to GetAttributeValue if no ASC yet, which may happen for clients (and prevent warning logs during initialization)
 		return;
@@ -204,20 +204,20 @@ FString UAOUserHUD::GetAttributeFormatString(float BaseValue, float MaxValue)
 
 bool UAOUserHUD::TryInitAbilitySystem()
 {
-	if (!AbilitySystemComp)
+	if (!AbilitySystemComponent)
 	{
-		AbilitySystemComp = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwnerActor);
+		AbilitySystemComponent = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(OwnerActor);
 	}
 
-	if (AbilitySystemComp)
+	if (AbilitySystemComponent)
 	{
 		bLazyAbilitySystemInitialization = false;
 
-		InitializeWithAbilitySystem(AbilitySystemComp);
+		InitializeWithAbilitySystem(AbilitySystemComponent);
 
 		// Init Stats
 		InitFromCharacter();
 	}
 
-	return AbilitySystemComp != nullptr;
+	return AbilitySystemComponent != nullptr;
 }

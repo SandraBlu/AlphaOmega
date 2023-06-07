@@ -11,10 +11,10 @@ void UAOUserWidget::SetOwnerActor(AActor* Actor)
 {
 	OwnerActor = Actor;
 	OwnerCoreComponent = UAOBFL::GetAOCoreComponent(Actor);
-	AbilitySystemComp = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Actor);
+	AbilitySystemComponent = UAbilitySystemGlobals::GetAbilitySystemComponentFromActor(Actor);
 }
 
-void UAOUserWidget::InitializeWithAbilitySystem(const UAbilitySystemComponent* AbilitySystemComponent)
+void UAOUserWidget::InitializeWithAbilitySystem(const UAbilitySystemComponent* AbilitySystemComp)
 {
 	if (!AbilitySystemComp)
 	{
@@ -41,52 +41,78 @@ void UAOUserWidget::InitializeWithAbilitySystem(const UAbilitySystemComponent* A
 void UAOUserWidget::ResetAbilitySystem()
 {
 	ShutdownAbilitySystemComponentListeners();
-	AbilitySystemComp = nullptr;
+	AbilitySystemComponent = nullptr;
 }
 
 void UAOUserWidget::RegisterAbilitySystemDelegates()
 {
-	if (!AbilitySystemComp)
+	if (!AbilitySystemComponent)
 	{
 		// Ability System may not have been available yet for character (PlayerState setup on clients)
 		return;
 	}
 
 	TArray<FGameplayAttribute> Attributes;
-	AbilitySystemComp->GetAllAttributes(Attributes);
+	AbilitySystemComponent->GetAllAttributes(Attributes);
 
 	for (FGameplayAttribute Attribute : Attributes)
 	{
-		AbilitySystemComp->GetGameplayAttributeValueChangeDelegate(Attribute).AddUObject(this, &UAOUserWidget::OnAttributeChanged);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(Attribute).AddUObject(this, &UAOUserWidget::OnAttributeChanged);
 	}
+
 	// Handle GameplayEffects added / remove
-	AbilitySystemComp->OnActiveGameplayEffectAddedDelegateToSelf.AddUObject(this, &UAOUserWidget::OnActiveGameplayEffectAdded);
-	AbilitySystemComp->OnAnyGameplayEffectRemovedDelegate().AddUObject(this, &UAOUserWidget::OnAnyGameplayEffectRemoved);
+	AbilitySystemComponent->OnActiveGameplayEffectAddedDelegateToSelf.AddUObject(this, &UAOUserWidget::OnActiveGameplayEffectAdded);
+	AbilitySystemComponent->OnAnyGameplayEffectRemovedDelegate().AddUObject(this, &UAOUserWidget::OnAnyGameplayEffectRemoved);
 
 	// Handle generic GameplayTags added / removed
-	AbilitySystemComp->RegisterGenericGameplayTagEvent().AddUObject(this, &UAOUserWidget::OnAnyGameplayTagChanged);
+	AbilitySystemComponent->RegisterGenericGameplayTagEvent().AddUObject(this, &UAOUserWidget::OnAnyGameplayTagChanged);
+
+	// Handle Ability Commit events
+	AbilitySystemComponent->AbilityCommittedCallbacks.AddUObject(this, &UAOUserWidget::OnAbilityCommitted);
 }
 
 void UAOUserWidget::ShutdownAbilitySystemComponentListeners() const
 {
-	if (!AbilitySystemComp)
+	if (!AbilitySystemComponent)
 	{
 		return;
 	}
 
 	TArray<FGameplayAttribute> Attributes;
-	AbilitySystemComp->GetAllAttributes(Attributes);
+	AbilitySystemComponent->GetAllAttributes(Attributes);
 
 	for (const FGameplayAttribute& Attribute : Attributes)
 	{
-		AbilitySystemComp->GetGameplayAttributeValueChangeDelegate(Attribute).RemoveAll(this);
+		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(Attribute).RemoveAll(this);
 	}
 
-	AbilitySystemComp->OnActiveGameplayEffectAddedDelegateToSelf.RemoveAll(this);
-	AbilitySystemComp->OnAnyGameplayEffectRemovedDelegate().RemoveAll(this);
-	AbilitySystemComp->RegisterGenericGameplayTagEvent().RemoveAll(this);
-	AbilitySystemComp->AbilityCommittedCallbacks.RemoveAll(this);
+	AbilitySystemComponent->OnActiveGameplayEffectAddedDelegateToSelf.RemoveAll(this);
+	AbilitySystemComponent->OnAnyGameplayEffectRemovedDelegate().RemoveAll(this);
+	AbilitySystemComponent->RegisterGenericGameplayTagEvent().RemoveAll(this);
+	AbilitySystemComponent->AbilityCommittedCallbacks.RemoveAll(this);
 
+	for (const FActiveGameplayEffectHandle GameplayEffectAddedHandle : GameplayEffectAddedHandles)
+	{
+		if (GameplayEffectAddedHandle.IsValid())
+		{
+			FOnActiveGameplayEffectStackChange* EffectStackChangeDelegate = AbilitySystemComponent->OnGameplayEffectStackChangeDelegate(GameplayEffectAddedHandle);
+			if (EffectStackChangeDelegate)
+			{
+				EffectStackChangeDelegate->RemoveAll(this);
+			}
+
+			FOnActiveGameplayEffectTimeChange* EffectTimeChangeDelegate = AbilitySystemComponent->OnGameplayEffectTimeChangeDelegate(GameplayEffectAddedHandle);
+			if (EffectTimeChangeDelegate)
+			{
+				EffectTimeChangeDelegate->RemoveAll(this);
+			}
+		}
+	}
+
+	for (const FGameplayTag GameplayTagBoundToDelegate : GameplayTagBoundToDelegates)
+	{
+		AbilitySystemComponent->RegisterGameplayTagEvent(GameplayTagBoundToDelegate).RemoveAll(this);
+	}
 }
 
 float UAOUserWidget::GetPercentForAttributes(FGameplayAttribute Attribute, FGameplayAttribute MaxAttribute) const
@@ -104,18 +130,18 @@ float UAOUserWidget::GetPercentForAttributes(FGameplayAttribute Attribute, FGame
 
 float UAOUserWidget::GetAttributeValue(FGameplayAttribute Attribute) const
 {
-	if (!AbilitySystemComp)
+	if (!AbilitySystemComponent)
 	{
 		return 0.0f;
 	}
 
-	if (!AbilitySystemComp->HasAttributeSetForAttribute(Attribute))
+	if (!AbilitySystemComponent->HasAttributeSetForAttribute(Attribute))
 	{
 		const UClass* AttributeSet = Attribute.GetAttributeSetClass();
 		return 0.0f;
 	}
 
-	return AbilitySystemComp->GetNumericAttribute(Attribute);
+	return AbilitySystemComponent->GetNumericAttribute(Attribute);
 }
 
 void UAOUserWidget::OnAttributeChanged(const FOnAttributeChangeData& Data)
@@ -127,14 +153,34 @@ void UAOUserWidget::OnAttributeChanged(const FOnAttributeChangeData& Data)
 	HandleAttributeChange(Data.Attribute, Data.NewValue, Data.OldValue);
 }
 
+void UAOUserWidget::OnActiveGameplayEffectAdded(UAbilitySystemComponent* Target, const FGameplayEffectSpec& SpecApplied, FActiveGameplayEffectHandle ActiveHandle)
+{
+	FGameplayTagContainer AssetTags;
+	SpecApplied.GetAllAssetTags(AssetTags);
+
+	FGameplayTagContainer GrantedTags;
+	SpecApplied.GetAllGrantedTags(GrantedTags);
+
+	if (AbilitySystemComponent)
+	{
+		AbilitySystemComponent->OnGameplayEffectStackChangeDelegate(ActiveHandle)->AddUObject(this, &UAOUserWidget::OnActiveGameplayEffectStackChanged);
+		AbilitySystemComponent->OnGameplayEffectTimeChangeDelegate(ActiveHandle)->AddUObject(this, &UAOUserWidget::OnActiveGameplayEffectTimeChanged);
+
+		// Store active handles to clear out bound delegates when shutting down listeners
+		GameplayEffectAddedHandles.AddUnique(ActiveHandle);
+	}
+
+	HandleGameplayEffectAdded(AssetTags, GrantedTags, ActiveHandle);
+}
+
 void UAOUserWidget::OnActiveGameplayEffectStackChanged(FActiveGameplayEffectHandle ActiveHandle, int32 NewStackCount, int32 PreviousStackCount)
 {
-	if (!AbilitySystemComp)
+	if (!AbilitySystemComponent)
 	{
 		return;
 	}
 
-	const FActiveGameplayEffect* GameplayEffect = AbilitySystemComp->GetActiveGameplayEffect(ActiveHandle);
+	const FActiveGameplayEffect* GameplayEffect = AbilitySystemComponent->GetActiveGameplayEffect(ActiveHandle);
 	if (!GameplayEffect)
 	{
 		return;
@@ -151,12 +197,12 @@ void UAOUserWidget::OnActiveGameplayEffectStackChanged(FActiveGameplayEffectHand
 
 void UAOUserWidget::OnActiveGameplayEffectTimeChanged(FActiveGameplayEffectHandle ActiveHandle, float NewStartTime, float NewDuration)
 {
-	if (!AbilitySystemComp)
+	if (!AbilitySystemComponent)
 	{
 		return;
 	}
 
-	const FActiveGameplayEffect* GameplayEffect = AbilitySystemComp->GetActiveGameplayEffect(ActiveHandle);
+	const FActiveGameplayEffect* GameplayEffect = AbilitySystemComponent->GetActiveGameplayEffect(ActiveHandle);
 	if (!GameplayEffect)
 	{
 		return;
@@ -171,29 +217,9 @@ void UAOUserWidget::OnActiveGameplayEffectTimeChanged(FActiveGameplayEffectHandl
 	HandleGameplayEffectTimeChange(AssetTags, GrantedTags, ActiveHandle, NewStartTime, NewDuration);
 }
 
-void UAOUserWidget::OnActiveGameplayEffectAdded(UAbilitySystemComponent* Target, const FGameplayEffectSpec& SpecApplied, FActiveGameplayEffectHandle ActiveHandle)
-{
-	FGameplayTagContainer AssetTags;
-	SpecApplied.GetAllAssetTags(AssetTags);
-
-	FGameplayTagContainer GrantedTags;
-	SpecApplied.GetAllGrantedTags(GrantedTags);
-
-	if (AbilitySystemComp)
-	{
-		AbilitySystemComp->OnGameplayEffectStackChangeDelegate(ActiveHandle)->AddUObject(this, &UAOUserWidget::OnActiveGameplayEffectStackChanged);
-		AbilitySystemComp->OnGameplayEffectTimeChangeDelegate(ActiveHandle)->AddUObject(this, &UAOUserWidget::OnActiveGameplayEffectTimeChanged);
-
-		// Store active handles to clear out bound delegates when shutting down listeners
-		GameplayEffectAddedHandles.AddUnique(ActiveHandle);
-	}
-
-	HandleGameplayEffectAdded(AssetTags, GrantedTags, ActiveHandle);
-}
-
 void UAOUserWidget::OnAnyGameplayEffectRemoved(const FActiveGameplayEffect& EffectRemoved)
 {
-	if (!AbilitySystemComp)
+	if (!AbilitySystemComponent)
 	{
 		return;
 	}
@@ -216,7 +242,7 @@ void UAOUserWidget::OnAnyGameplayTagChanged(FGameplayTag GameplayTag, int32 NewC
 
 void UAOUserWidget::OnAbilityCommitted(UGameplayAbility* ActivatedAbility)
 {
-	if (!AbilitySystemComp)
+	if (!AbilitySystemComponent)
 	{
 		return;
 	}
@@ -252,7 +278,7 @@ void UAOUserWidget::OnAbilityCommitted(UGameplayAbility* ActivatedAbility)
 	ActivatedAbility->GetCooldownTimeRemainingAndDuration(AbilitySpecHandle, &ActorInfo, TimeRemaining, Duration);
 
 	// Broadcast start of cooldown to HUD
-	const FGameplayAbilitySpec* AbilitySpec = AbilitySystemComp->FindAbilitySpecFromHandle(AbilitySpecHandle);
+	const FGameplayAbilitySpec* AbilitySpec = AbilitySystemComponent->FindAbilitySpecFromHandle(AbilitySpecHandle);
 	if (AbilitySpec)
 	{
 		HandleCooldownStart(AbilitySpec->Ability, *CooldownTags, TimeRemaining, Duration);
@@ -263,7 +289,7 @@ void UAOUserWidget::OnAbilityCommitted(UGameplayAbility* ActivatedAbility)
 	CooldownTags->GetGameplayTagArray(GameplayTags);
 	for (const FGameplayTag GameplayTag : GameplayTags)
 	{
-		AbilitySystemComp->RegisterGameplayTagEvent(GameplayTag).AddUObject(this, &UAOUserWidget::OnCooldownGameplayTagChanged, AbilitySpecHandle, Duration);
+		AbilitySystemComponent->RegisterGameplayTagEvent(GameplayTag).AddUObject(this, &UAOUserWidget::OnCooldownGameplayTagChanged, AbilitySpecHandle, Duration);
 		GameplayTagBoundToDelegates.AddUnique(GameplayTag);
 	}
 }
@@ -275,12 +301,12 @@ void UAOUserWidget::OnCooldownGameplayTagChanged(const FGameplayTag GameplayTag,
 		return;
 	}
 
-	if (!AbilitySystemComp)
+	if (!AbilitySystemComponent)
 	{
 		return;
 	}
 
-	const FGameplayAbilitySpec* AbilitySpec = AbilitySystemComp->FindAbilitySpecFromHandle(AbilitySpecHandle);
+	const FGameplayAbilitySpec* AbilitySpec = AbilitySystemComponent->FindAbilitySpecFromHandle(AbilitySpecHandle);
 	if (!AbilitySpec)
 	{
 		// Ability might have been cleared when cooldown expires
@@ -295,7 +321,7 @@ void UAOUserWidget::OnCooldownGameplayTagChanged(const FGameplayTag GameplayTag,
 		HandleCooldownEnd(AbilitySpec->Ability, GameplayTag, Duration);
 	}
 
-	AbilitySystemComp->RegisterGameplayTagEvent(GameplayTag, EGameplayTagEventType::NewOrRemoved).RemoveAll(this);
+	AbilitySystemComponent->RegisterGameplayTagEvent(GameplayTag, EGameplayTagEventType::NewOrRemoved).RemoveAll(this);
 }
 
 void UAOUserWidget::HandleGameplayEffectStackChange(FGameplayTagContainer AssetTags, FGameplayTagContainer GrantedTags, FActiveGameplayEffectHandle ActiveHandle, int32 NewStackCount, int32 OldStackCount)
@@ -333,9 +359,9 @@ void UAOUserWidget::HandleCooldownEnd(UGameplayAbility* Ability, FGameplayTag Co
 	OnCooldownEnd(Ability, CooldownTag, Duration);
 }
 
-FAOGameplayEffectUIData UAOUserWidget::GetGameplayEffectUIData(FActiveGameplayEffectHandle ActiveHandle)
+FGEffectUIData UAOUserWidget::GetGameplayEffectUIData(FActiveGameplayEffectHandle ActiveHandle)
 {
-	return FAOGameplayEffectUIData(
+	return FGEffectUIData(
 		UAbilitySystemBlueprintLibrary::GetActiveGameplayEffectStartTime(ActiveHandle),
 		UAbilitySystemBlueprintLibrary::GetActiveGameplayEffectTotalDuration(ActiveHandle),
 		UAbilitySystemBlueprintLibrary::GetActiveGameplayEffectExpectedEndTime(ActiveHandle),

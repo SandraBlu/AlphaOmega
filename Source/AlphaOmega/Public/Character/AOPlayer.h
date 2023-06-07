@@ -72,10 +72,6 @@ public:
 	class USkeletalMeshComponent* BackpackMesh;
 	UPROPERTY(EditAnywhere, Category = "Components")
 	class USkeletalMeshComponent* Canteen;
-
-	//Inventory Comp
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
-	UAOInventoryComponent* PlayerInventory;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	UInteractComponent* PlayerLootInteract;
@@ -95,29 +91,6 @@ protected:
 
 	
 public:
-
-
-//Looting
- 	UFUNCTION(BlueprintCallable)
-	void SetLootSource(class UAOInventoryComponent* NewLootSource);
- 	
- 	UFUNCTION(BlueprintPure, Category = "Loot")
-	bool IsLooting() const;
-
- 	
-protected:
-	
-	//Looting--------------------------------------------
-		
-	//Inventory we are currently looting from
-	UPROPERTY(BlueprintReadOnly)
-	UAOInventoryComponent* LootSource;
-	
- 	UFUNCTION()
- 	void OnLootSourceDestroyed(AActor* DestroyedActor);
- 	
- 	UFUNCTION()
- 	void ShowHideLootMenu();
 
 	UPROPERTY(EditAnywhere, Category = "Weapon")
 	class AAOWeapon* EquippedWeapon;
@@ -154,12 +127,13 @@ protected:
 	//called when falling off cliff
 	//void UntimelyDeath(struct FDamageEvent const& DamageEvent, const AActor* DamageCauser);
 
-	
-public:
+	UFUNCTION()
+	void PlayTossFX(class UAnimMontage* TossMontage);
+	class UThrowableItem* GetThrowable() const;
+	void SpawnThrowable();
+	bool CanUseThrowable() const;
 
-	//Looting
-	UFUNCTION(BlueprintCallable, Category = "Loot")
-	void LootItem(class UAOItem* ItemToGive);
+public:
 
 	//Timed Interact helpers----------
 	bool IsInteracting() const;
@@ -175,7 +149,7 @@ public:
 
  	UPROPERTY(EditDefaultsOnly, Category = "Item")
  	TSubclassOf<class AAOPickup> PickupClass;
- 
+
  	//Equipment
  	bool EquipItem(class UAOEquipItem* Item);
  	bool UnequipItem(class UAOEquipItem* Item);
@@ -189,7 +163,28 @@ public:
  	//Equip Delegate
  	UPROPERTY(BlueprintAssignable, Category = "Item")
  	FOnEquippedItemsChanged OnEquippedItemsChanged;
- 
+
+ protected:
+	//Aiming-----------------
+	bool CanAim() const;
+
+	void SetAiming(const bool bNewAiming);
+
+	UPROPERTY(BlueprintReadWrite)
+	bool bIsAiming;
+
+	UPROPERTY(BlueprintReadWrite)
+	bool bIsSprinting = false;
+
+	UPROPERTY(BlueprintReadWrite)
+	float SprintSpeed;
+
+	UPROPERTY(BlueprintReadWrite)
+	float JogSpeed;
+
+
+
+ public: 
  	//Equipment; BP Access SK Mesh Comp Slot
  	UFUNCTION(BlueprintPure)
  	class USkeletalMeshComponent* GetSlotSkeletalMeshComponent(const EEquipSlot Slot);
@@ -199,6 +194,9 @@ public:
 
 	UFUNCTION(BlueprintPure)
 	FORCEINLINE class AAOWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
+
+	UFUNCTION(BlueprintPure)
+	FORCEINLINE bool IsAiming() const { return bIsAiming; }
 
 
 protected:
@@ -219,17 +217,21 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputAction* InterAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
-	UInputAction* SprintAction;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputAction* CrouchAction;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputAction* OpenMenuAction;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputAction* OpenMapAction;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
 	UInputAction* DrawWeaponAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	UInputAction* ThrowAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input)
+	UInputAction* AimAction;
 	
 	//void StartReload();
 	//Input Binding Functions
@@ -237,13 +239,14 @@ protected:
 	void Look(const FInputActionValue& Value);
 	void CrouchStart(const FInputActionValue& Value);
 	void CrouchStop(const FInputActionValue& Value);
-	void SprintStart(const FInputActionValue& Value);
-	void SprintStop(const FInputActionValue& Value);
-	
+		
 	void StartInteract(const FInputActionValue& Value);
 	void CompleteInteract(const FInputActionValue& Value);
 
 	void DrawWeapon(const FInputActionValue& Value);
+	void UseThrowable(const FInputActionValue& Value);
+	void StartAiming(const FInputActionValue& Value);
+	void StopAiming(const FInputActionValue& Value);
 	
 	void OpenMenu(const FInputActionValue& Value);
 	void OpenMap(const FInputActionValue& Value);

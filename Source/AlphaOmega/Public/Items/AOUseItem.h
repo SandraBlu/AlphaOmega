@@ -17,9 +17,6 @@ class ALPHAOMEGA_API UAOUseItem : public UAOItem
 public:
 
 	UAOUseItem();
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Restore")
-	float HealAmount;
 
 	virtual void Use(class AAOPlayer* Character) override;
 };

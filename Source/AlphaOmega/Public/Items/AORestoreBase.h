@@ -12,15 +12,38 @@ class ALPHAOMEGA_API AAORestoreBase : public AActor
 	GENERATED_BODY()
 	
 public:	
-	// Sets default values for this actor's properties
+
 	AAORestoreBase();
 
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	UPROPERTY()
+	bool bIsActive;
+
+	UFUNCTION()
+	void IsActive();
+
+	UPROPERTY(EditAnywhere, Category = "Powerup")
+	float RespawnTime;
+
+	FTimerHandle TimerHandle_RespawnTimer;
+
+	UFUNCTION()
+	void ShowRestoreSite();
+
+	void HideAndCooldownRestoreSite();
+
+	void SetRestoreSiteState(bool bNewIsActive);
+
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	TObjectPtr<class USphereComponent> SphereComp;
+
+	UPROPERTY(VisibleAnywhere, Category = "Components")
+	TObjectPtr<class UStaticMeshComponent> MeshComp;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Components")
+	class UInteractComponent* InteractComp;
+	UPROPERTY(EditAnywhere, Category = "VFX")
+	class UNiagaraComponent* RestoreSiteVFX;
 
 };

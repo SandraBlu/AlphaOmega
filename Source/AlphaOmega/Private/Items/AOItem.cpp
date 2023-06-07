@@ -17,6 +17,12 @@ UAOItem::UAOItem()
 }
 
 #if WITH_EDITOR
+
+class UWorld* UAOItem::GetWorld() const
+{
+	return World;
+}
+
 void UAOItem::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);

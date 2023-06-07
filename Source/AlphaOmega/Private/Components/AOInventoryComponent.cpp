@@ -151,6 +151,14 @@ void UAOInventoryComponent::SetCapacity(const int32 NewCapacity)
 void UAOInventoryComponent::RefreshInventory()
 {
 	OnInventoryUpdated.Broadcast();
+
+	for (auto& Item : Items)
+	{
+		if (Item && !Item->World)
+		{
+			Item->World = GetWorld();
+		}
+	}
 }
 
 UAOItem* UAOInventoryComponent::AddItem(class UAOItem* Item)
@@ -158,6 +166,7 @@ UAOItem* UAOInventoryComponent::AddItem(class UAOItem* Item)
 	if (GetOwner())
 	{
 		UAOItem* NewItem = NewObject<UAOItem>(GetOwner(), Item->GetClass());
+		NewItem->World = GetWorld();
 		NewItem->SetQuantity(Item->GetQuantity());
 		NewItem->OwningInventory = this;
 		NewItem->AddedToInventory(this);

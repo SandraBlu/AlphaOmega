@@ -25,7 +25,9 @@ class ALPHAOMEGA_API UAOItem : public UObject
 {
 	GENERATED_BODY()
 	
-		protected:
+protected:
+
+	virtual class UWorld* GetWorld() const override;
 
 	
 #if WITH_EDITOR
@@ -35,6 +37,9 @@ class ALPHAOMEGA_API UAOItem : public UObject
 public:
 
 	UAOItem();
+
+	UPROPERTY(Transient)
+	class UWorld* World;
 
 	UPROPERTY()
 	class UAOInventoryComponent* OwningInventory;
@@ -59,6 +64,9 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item", meta = (ClampMin = 0.0))
 	float Weight;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item")
+	float RestoreAmount;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item")
 	bool bStackable;
@@ -88,6 +96,9 @@ public:
 
 	UFUNCTION(BlueprintPure, Category = "Item")
 	virtual bool  ShouldShowInInventory() const;
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnUse(class AAOPlayer* Character);
 
 	virtual void Use(class AAOPlayer* Character);
 	virtual void AddedToInventory(class UAOInventoryComponent* Inventory);

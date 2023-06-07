@@ -2,26 +2,55 @@
 
 
 #include "Items/AORestoreBase.h"
+#include "Components/InteractComponent.h"
+#include "NiagaraComponent.h"
+#include <Components/StaticMeshComponent.h>
 
 // Sets default values
 AAORestoreBase::AAORestoreBase()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	MeshComp = CreateDefaultSubobject<UStaticMeshComponent>("MeshComp");
+	MeshComp->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	SetRootComponent(MeshComp);
+
+	RestoreSiteVFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("RestoreSite"));
+	RestoreSiteVFX->SetupAttachment(GetRootComponent());
+
+	InteractComp = CreateDefaultSubobject<UInteractComponent>("RestoreInteractComp");
+	InteractComp->InteractTime = 5.f;
+	InteractComp->InteractDistance = 750.f;
+	InteractComp->InteractItemName = FText::FromString("RestoreSite");
+	InteractComp->InteractActionText = FText::FromString("Heal");
+	InteractComp->SetupAttachment(MeshComp);
+
+	RespawnTime = 5.f;
 
 }
 
-// Called when the game starts or when spawned
-void AAORestoreBase::BeginPlay()
+void AAORestoreBase::IsActive()
 {
-	Super::BeginPlay();
-	
+	// Set visibility on root and all children
+	RootComponent->SetVisibility(bIsActive, true);
 }
 
-// Called every frame
-void AAORestoreBase::Tick(float DeltaTime)
+void AAORestoreBase::ShowRestoreSite()
 {
-	Super::Tick(DeltaTime);
-
+	SetRestoreSiteState(true);
 }
+
+void AAORestoreBase::HideAndCooldownRestoreSite()
+{
+	SetRestoreSiteState(false);
+
+	GetWorldTimerManager().SetTimer(TimerHandle_RespawnTimer, this, &AAORestoreBase::ShowRestoreSite, RespawnTime);
+}
+
+void AAORestoreBase::SetRestoreSiteState(bool bNewIsActive)
+{
+	SetActorEnableCollision(bNewIsActive);
+
+	//Set Visibility on root and all children
+	RootComponent->SetVisibility(bNewIsActive, true);
+}
+
 

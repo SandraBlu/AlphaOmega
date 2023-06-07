@@ -30,6 +30,7 @@ AAOWeapon::AAOWeapon()
     CurrentType = EWeaponType::Melee;
     InactiveWeaponSocket = FName("inactive_sword");
     ActiveWeaponSocket = FName("active_sword");
+    ADSTime = 1.f;
 
 }
 

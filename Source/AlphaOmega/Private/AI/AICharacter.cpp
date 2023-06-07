@@ -13,6 +13,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/InteractComponent.h"
 #include "Components/NPCHealthComponent.h"
+#include "Framework/AOBFL.h"
+#include "Components/AOCoreComponent.h"
 
 #define LOCTEXT_NAMESPACE "LootAI"
 
@@ -28,14 +30,15 @@ AAICharacter::AAICharacter()
 	GetMesh()->SetGenerateOverlapEvents(true);
 	//GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 
-	HealthComp = CreateDefaultSubobject<UNPCHealthComponent>("HealthComp");
-
 	LootInteract = CreateDefaultSubobject<UInteractComponent>("LootInteract");
 	LootInteract->InteractActionText = LOCTEXT("LootAIText", "Loot");
 	LootInteract->InteractItemName = LOCTEXT("LootAIName", "AIName");
 	LootInteract->SetupAttachment(GetRootComponent());
 	LootInteract->SetActive(false, true);
 	LootInteract->bAutoActivate = false;
+
+	TimeToHitParamName = "TimeToHit";
+	TargetActorKey = "TargetActor";
 }
 
 void AAICharacter::SetTargetActor(AActor* NewTarget)
@@ -53,51 +56,6 @@ void AAICharacter::PostInitializeComponents()
 	Super::PostInitializeComponents();
 
 	PawnSensingComp->OnSeePawn.AddDynamic(this, &AAICharacter::OnPawnSeen);
-	HealthComp->OnHealthChanged.AddDynamic(this, &AAICharacter::OnHealthChanged);
-}
-
-void AAICharacter::OnHealthChanged(AActor* InstigatorActor, UNPCHealthComponent* OwningComp, float NewHealth, float Delta)
-{
-	if (Delta < 0.0f)
-	{
-		if (InstigatorActor != this)
-		{
-			SetTargetActor(InstigatorActor);
-		}
-
-		if (HealthBar == nullptr)
-		{
-			HealthBar = CreateWidget<UWorldUserWidget>(GetWorld(), HealthBarWidgetClass);
-			if (HealthBar)
-			{
-				HealthBar->AttachedActor = this;
-				HealthBar->AddToViewport();
-			}
-		}
-
-		GetMesh()->SetScalarParameterValueOnMaterials(TimeToHitParamName, GetWorld()->TimeSeconds);
-
-		// Died
-		if (NewHealth <= 0.0f)
-		{
-			// stop BT
-			AAIController* AIC = Cast<AAIController>(GetController());
-			if (AIC)
-			{
-				AIC->GetBrainComponent()->StopLogic("Killed");
-			}
-
-			// ragdoll
-			GetMesh()->SetAllBodiesSimulatePhysics(true);
-			GetMesh()->SetCollisionProfileName("Ragdoll");
-
-			GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-			GetCharacterMovement()->DisableMovement();
-
-			// set lifespan
-			SetLifeSpan(10.0f);
-		}
-	}
 }
 
 void AAICharacter::OnPawnSeen(APawn* Pawn)

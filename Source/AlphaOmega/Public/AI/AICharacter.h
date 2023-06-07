@@ -23,12 +23,6 @@ public:
 
 protected:
 
-	UPROPERTY()
-	UWorldUserWidget* HealthBar;
-
-	UPROPERTY(EditDefaultsOnly, Category = "UI")
-	TSubclassOf<UUserWidget> HealthBarWidgetClass;
-
 	/* Widget to display when bot first sees a player. */
 	UPROPERTY(EditDefaultsOnly, Category = "UI")
 	TSubclassOf<UUserWidget> SpottedWidgetClass;
@@ -41,9 +35,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Effects")
 	FName TargetActorKey;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
-	UNPCHealthComponent* HealthComp;
-
 	UFUNCTION()
 	void SetTargetActor(AActor* NewTarget);
 
@@ -51,9 +42,6 @@ protected:
 	class UInteractComponent* LootInteract;
 
 	virtual void PostInitializeComponents();
-
-	UFUNCTION()
-	void OnHealthChanged(AActor* InstigatorActor, UNPCHealthComponent* OwningComp, float NewHealth, float Delta);
 
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	class UPawnSensingComponent* PawnSensingComp;
