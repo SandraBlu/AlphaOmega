@@ -3,7 +3,7 @@
 
 #include "Items/AOPickup.h"
 #include "Components/AOInteractComponent.h"
-//#include "NiagaraComponent.h"
+#include "NiagaraComponent.h"
 #include "Items/AOItem.h"
 #include "Components/AOInventoryComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -16,8 +16,8 @@ AAOPickup::AAOPickup()
 	PickupMesh->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
 	SetRootComponent(PickupMesh);
 
-	/*PickupVFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("PickupVFX"));
-	PickupVFX->SetupAttachment(GetRootComponent());*/
+	PickupVFX = CreateDefaultSubobject<UNiagaraComponent>(TEXT("PickupVFX"));
+	PickupVFX->SetupAttachment(GetRootComponent());
 
 	InteractComp = CreateDefaultSubobject<UAOInteractComponent>("PickupInteractComp");
 	InteractComp->InteractTime = 0.f;

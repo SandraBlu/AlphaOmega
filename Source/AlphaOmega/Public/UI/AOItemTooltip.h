@@ -16,7 +16,7 @@ class ALPHAOMEGA_API UAOItemTooltip : public UUserWidget
 
 public:
 
-	/*UPROPERTY(BlueprintReadOnly, Category = "Tooltip", meta = (ExposeOnSpawn = true))
-	class UAOItemSlot* InventorySlot;*/
+	UPROPERTY(BlueprintReadOnly, Category = "Tooltip", meta = (ExposeOnSpawn = true))
+	class UAOItemSlot* InventorySlot;
 	
 };

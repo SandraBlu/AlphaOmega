@@ -6,8 +6,9 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
-//#include "EnhancedInputSubsystems.h"
-//#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+#include "EnhancedInputComponent.h"
+#include "Items/AOPickup.h"
 #include "Items/AOEquipItem.h"
 #include "Components/AOInteractComponent.h"
 #include "Components/AOInventoryComponent.h"
@@ -56,10 +57,10 @@ void AAOPlayer::BeginPlay()
 
 	if (APlayerController* PlayerController = Cast<APlayerController>(GetController()))
 	{
-		/*if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
 		{
 			Subsystem->AddMappingContext(PlayerMappingContext, 0);
-		}*/
+		}
 	}
 }
 
@@ -230,6 +231,15 @@ bool AAOPlayer::UnequipItem(class UAOEquipItem* Item)
 	return false;
 }
 
+class USkeletalMeshComponent* AAOPlayer::GetSlotSkeletalMeshComponent(const EEquipSlot Slot)
+{
+	if (PlayerMeshes.Contains(Slot))
+	{
+		return *PlayerMeshes.Find(Slot);
+	}
+	return nullptr;
+}
+
 void AAOPlayer::StartInteract(const FInputActionValue& Value)
 {
 	InteractData.bInteractHeld = true;
@@ -264,16 +274,14 @@ void AAOPlayer::SetupPlayerInputComponent(class UInputComponent* PlayerInputComp
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	//if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
+	if (UEnhancedInputComponent* EnhancedInputComponent = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
 	{
-
 		//Interact
-		//EnhancedInputComponent->BindAction(InterAction, ETriggerEvent::Started, this, &AAOPlayer::StartInteract);
-		//EnhancedInputComponent->BindAction(InterAction, ETriggerEvent::Completed, this, &AAOPlayer::CompleteInteract);
+		EnhancedInputComponent->BindAction(InterAction, ETriggerEvent::Started, this, &AAOPlayer::StartInteract);
+		EnhancedInputComponent->BindAction(InterAction, ETriggerEvent::Completed, this, &AAOPlayer::CompleteInteract);
 
 		//Weapon
 		//EnhancedInputComponent->BindAction(ThrowAction, ETriggerEvent::Started, this, &AAOPlayer::UseThrowable);
-
 	}
 }
 

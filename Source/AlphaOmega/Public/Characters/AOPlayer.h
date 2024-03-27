@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Characters/AOCharacter.h"
+#include "UI/AOItemSlot.h"
 #include "AOPlayer.generated.h"
 
 class UInputMappingContext;
@@ -35,7 +36,7 @@ struct FInteractData
 	bool bInteractHeld;
 };
 
-//DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEquippedItemsChanged, const EEquipSlot, Slot, const UAOEquipItem*, Item);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEquippedItemsChanged, const EEquipSlot, Slot, const UAOEquipItem*, Item);
 /**
  * 
  */
@@ -191,13 +192,13 @@ public:
 	//void UnequipWeapon();
 
  	//Equip Delegate
- 	/*UPROPERTY(BlueprintAssignable, Category = "Item")
- 	FOnEquippedItemsChanged OnEquippedItemsChanged;*/
+ 	UPROPERTY(BlueprintAssignable, Category = "Item")
+ 	FOnEquippedItemsChanged OnEquippedItemsChanged;
 
  	//Equipment; BP Access SK Mesh Comp Slot
- 	/*UFUNCTION(BlueprintPure)
+ 	UFUNCTION(BlueprintPure)
  	class USkeletalMeshComponent* GetSlotSkeletalMeshComponent(const EEquipSlot Slot);
- */
+ 
  	UFUNCTION(BlueprintPure)
  	FORCEINLINE TMap<EEquipSlot, UAOEquipItem*> GetEquippedItems() const { return EquippedItems; }
 
