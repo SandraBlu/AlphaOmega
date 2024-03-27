@@ -91,10 +91,10 @@ protected:
 	//virtual void Restart() override;
 
 	UPROPERTY(VisibleAnywhere)
-	class USpringArmComponent* TPCCamBoom;
+	class USpringArmComponent* TPCBoom;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
-	class UCameraComponent* FollowTPC;
+	class UCameraComponent* TPC;
 
 	
 public:

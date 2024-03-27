@@ -6,6 +6,8 @@
 #include "GameFramework/GameModeBase.h"
 #include "AOGameMode.generated.h"
 
+class UAOCharacterInfo;
+
 /**
  * 
  */
@@ -13,5 +15,9 @@ UCLASS()
 class ALPHAOMEGA_API AAOGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
-	
+
+	public:
+
+	UPROPERTY(EditDefaultsOnly, Category = "Character Defaults")
+	UAOCharacterInfo* CharacterInfo;
 };

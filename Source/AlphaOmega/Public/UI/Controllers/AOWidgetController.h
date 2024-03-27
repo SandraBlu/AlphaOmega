@@ -6,6 +6,27 @@
 #include "UObject/NoExportTypes.h"
 #include "AOWidgetController.generated.h"
 
+class UAbilitySystemComponent;
+class UAttributeSet;
+
+USTRUCT(BlueprintType)
+struct FWidgetControllerParams
+{
+	GENERATED_BODY()
+
+	FWidgetControllerParams() {}
+	FWidgetControllerParams(APlayerController* PC, UAbilitySystemComponent* ASC, UAttributeSet* AS) 
+	: PlayerController(PC),  AbilitySystemComponent(ASC), AttributeSet(AS) {};
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	APlayerController* PlayerController = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UAbilitySystemComponent* AbilitySystemComponent = nullptr;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	UAttributeSet* AttributeSet = nullptr;
+};
 /**
  * 
  */
@@ -13,5 +34,25 @@ UCLASS()
 class ALPHAOMEGA_API UAOWidgetController : public UObject
 {
 	GENERATED_BODY()
+
+public:
+
+	UFUNCTION(BlueprintCallable)
+	void SetWidgetControllerParams(const FWidgetControllerParams& WCParams);
+
+	UFUNCTION(BlueprintCallable)
+	virtual void BroadcastInitialValues();
+	virtual void BindCallbacksToDependencies();
+
+protected:
+
+	UPROPERTY(BlueprintReadOnly, Category = "WidgetController")
+	APlayerController* PlayerController;
+
+	UPROPERTY(BlueprintReadOnly, Category = "WidgetController")
+	UAbilitySystemComponent* AbilitySystemComponent;
+
+	UPROPERTY(BlueprintReadOnly, Category = "WidgetController")
+	UAttributeSet* AttributeSet;
 	
 };

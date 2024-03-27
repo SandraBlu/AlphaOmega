@@ -17,8 +17,13 @@
 
 AAOPlayer::AAOPlayer()
 {
-	FollowTPC = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCam"));
-	FollowTPC->SetupAttachment(TPCCamBoom);
+	TPCBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
+	TPCBoom->SetupAttachment(GetRootComponent());
+	TPCBoom->TargetArmLength = 300.f;
+	TPCBoom->bUsePawnControlRotation = true;
+
+	TPC = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCam"));
+	TPC->SetupAttachment(TPCBoom);
 
 	HeadAccessoryMesh = PlayerMeshes.Add(EEquipSlot::EIS_HeadAccessory, CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HeadAccessoryMesh")));
 	TorsoMesh = PlayerMeshes.Add(EEquipSlot::EIS_Torso, CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("TorsoMesh")));
