@@ -1,0 +1,96 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "5.3",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "AlphaOmega",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"CoreUObject",
+				"UMG",
+				"GameplayAbilities",
+				"AIModule",
+				"PhysicsCore",
+				"EnhancedInput",
+				"Niagara"
+			]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "ModelingToolsEditorMode",
+			"Enabled": true,
+			"TargetAllowList": [
+				"Editor"
+			]
+		},
+		{
+			"Name": "GameplayAbilities",
+			"Enabled": true
+		},
+		{
+			"Name": "Narrative",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/b03174e0a1cc4de4b17dcfb2a0ba6884"
+		},
+		{
+			"Name": "VisualStudioTools",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/362651520df94e4fa65492dbcba44ae2",
+			"SupportedTargetPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "ComboGraph",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/0211d0b7c514480c8e6ef338999d63c2"
+		},
+		{
+			"Name": "CapsuleTraceRotation",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/1abd5424c39d426c81068388a39a61c3"
+		},
+		{
+			"Name": "MotionWarping",
+			"Enabled": true
+		},
+		{
+			"Name": "BookMenu",
+			"Enabled": true,
+			"MarketplaceURL": "https://publish.unrealengine.com/v3/edit-product/a88c635f71bd42a680592c8ec2e91e32"
+		},
+		{
+			"Name": "NarrativeCommonUI",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/f1adaffd049b44cca254832b2beeb1b7"
+		},
+		{
+			"Name": "NarrativeInventory",
+			"Enabled": false,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/46d407c1917d4575bfc2a8bb1cb5185d"
+		},
+		{
+			"Name": "Water",
+			"Enabled": true
+		},
+		{
+			"Name": "NarrativeInteraction",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/46d407c1917d4575bfc2a8bb1cb5185d"
+		},
+		{
+			"Name": "SkeletalMeshModelingTools",
+			"Enabled": true
+		},
+		{
+			"Name": "NarrativeNavigator",
+			"Enabled": true,
+			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/46d407c1917d4575bfc2a8bb1cb5185d"
+		}
+	]
+}
