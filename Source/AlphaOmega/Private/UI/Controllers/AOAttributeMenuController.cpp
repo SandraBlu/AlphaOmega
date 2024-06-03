@@ -9,15 +9,15 @@
 
 void UAOAttributeMenuController::BindCallbacksToDependencies()
 {
-	
+	check(AttributeInfo);
 	for (auto& Pair : GetAOAS()->AttributeTagMap)
 	{
 		AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(Pair.Value()).AddLambda(
 			[this, Pair](const FOnAttributeChangeData& Data)
-			{
-				BroadcastAttributeInfo(Pair.Key, Pair.Value());
-			}
-		);
+		{
+			BroadcastAttributeInfo(Pair.Key, Pair.Value());
+		}
+	);
 	}
 	
 	GetAOPS()->OnAttributePtsChangeDelegate.AddLambda([this](int32 Points)
@@ -29,20 +29,19 @@ void UAOAttributeMenuController::BindCallbacksToDependencies()
 
 void UAOAttributeMenuController::BroadcastInitialValues()
 {
-	
+	UAOAttributeSet* AS = CastChecked<UAOAttributeSet>(AttributeSet);
 	check(AttributeInfo)
-		for (auto& Pair : GetAOAS()->AttributeTagMap)
+		for (auto& Pair : AS->AttributeTagMap)
 		{
 			BroadcastAttributeInfo(Pair.Key, Pair.Value());
-			
 		}
-		
 		AttributePtsChangeDelegate.Broadcast(GetAOPS()->GetAttributePts());
 }
 
 void UAOAttributeMenuController::UpgradeAttribute(const FGameplayTag& AttributeTag)
 {
-	GetAOASC()->UpgradeAttribute(AttributeTag);
+	UAOAbilityComp* ASC = CastChecked<UAOAbilityComp>(AbilitySystemComponent);
+	ASC->UpgradeAttribute(AttributeTag);
 }
 
 void UAOAttributeMenuController::BroadcastAttributeInfo(const FGameplayTag& AttributeTag, const FGameplayAttribute& Attribute) const

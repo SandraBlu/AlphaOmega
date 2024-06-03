@@ -31,6 +31,7 @@ class UAbilityInfo;
 
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnAttributeChange, float, NewValue);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLevelChangedSignature, int32, NewLevel, bool, bLevelUp);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FUIMessageRowSignature, FUITableRow, Row);
 
 
@@ -73,7 +74,7 @@ public:
 	FOnAttributeChange OnXPPercentChangeDelegate;
 
 	UPROPERTY(BlueprintAssignable, Category = "GAS|XP")
-	FOnPlayerStatChangeSignature OnPlayerLevelChangeDelegate;
+	FOnLevelChangedSignature OnPlayerLevelChangeDelegate;
 
 protected:
 	

@@ -53,11 +53,28 @@ void AAOPlayer::PossessedBy(AController* NewController)
 	GrantAbilities();
 }
 
+void AAOPlayer::OnRep_PlayerState()
+{
+	//client
+	Super::OnRep_PlayerState();
+	InitAbilityActorInfo();
+}
+
 int32 AAOPlayer::GetAbilityPoints_Implementation() const
 {
 	AAOPlayerState* AOPlayerState = GetPlayerState<AAOPlayerState>();
 	check(AOPlayerState)
 	return 	AOPlayerState->GetAbilityPts();
+}
+
+void AAOPlayer::OnRep_Stunned()
+{
+	Super::OnRep_Stunned();
+}
+
+void AAOPlayer::OnRep_Burned()
+{
+	Super::OnRep_Burned();
 }
 
 int32 AAOPlayer::GetAttributePoints_Implementation() const
@@ -248,7 +265,7 @@ bool AAOPlayer::CanDisarm()
 
 bool AAOPlayer::CanDraw()
 {
-	return ActionState == EActionState::EAS_Idle && EquipState == EEquipState::EES_Unequipped && EquippedWeapon;
+	return ActionState == EActionState::EAS_Idle && EquipState == EEquipState::EES_Unequipped && Gear->EquippedWeapon;
 }
 
 void AAOPlayer::Disarm()

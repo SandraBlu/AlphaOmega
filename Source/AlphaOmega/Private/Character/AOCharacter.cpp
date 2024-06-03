@@ -11,7 +11,7 @@
 #include "AOGameplayTags.h"
 #include "Kismet/GameplayStatics.h"
 #include "FX/DebuffNiagaraComp.h"
-
+#include "Net/UnrealNetwork.h"
 
 
 // Sets default values
@@ -70,6 +70,15 @@ FOnDeath AAOCharacter::GetOnDeathDelegate()
 	return OnDeath;
 }
 
+void AAOCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AAOCharacter, bIsStunned);
+	DOREPLIFETIME(AAOCharacter, bIsBurned);
+	DOREPLIFETIME(AAOCharacter, bIsBeingShocked);
+}
+
 UAOFootstepsComponent* AAOCharacter::GetFootstepsComp() const
 {
 	return FootstepsComp;
@@ -109,6 +118,14 @@ TArray<FTaggedMontage> AAOCharacter::GetAttackMontages_Implementation()
 	return AttackMontages;
 }
 
+void AAOCharacter::OnRep_Stunned()
+{
+}
+
+void AAOCharacter::OnRep_Burned()
+{
+}
+
 void AAOCharacter::InitAbilityActorInfo()
 {
 
@@ -143,6 +160,12 @@ void AAOCharacter::GrantAbilities()
 FVector AAOCharacter::GetCombatSocketLocation_Implementation(const FGameplayTag& CombatSocketTag)
 {
 	return FVector();
+}
+
+void AAOCharacter::StunTagChanged(const FGameplayTag CallbackTag, int32 NewCount)
+{
+	bIsStunned = NewCount > 0;
+	GetCharacterMovement()->MaxWalkSpeed = bIsStunned ? 0.f : BaseWalkSpeed;
 }
 
 UAOAbilityComp* AAOCharacter::GetASC()

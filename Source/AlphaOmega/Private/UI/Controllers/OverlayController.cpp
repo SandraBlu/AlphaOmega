@@ -24,9 +24,9 @@ void UOverlayController::BindCallbacksToDependencies()
 {
 	//XP Change
 	GetAOPS()->OnXPChangeDelegate.AddUObject(this, &UOverlayController::OnXPChange);
-	GetAOPS()->OnLevelChangeDelegate.AddLambda(	[this](int32 NewLevel)
+	GetAOPS()->OnLevelChangeDelegate.AddLambda(	[this](int32 NewLevel, bool bLevelUp)
 		{
-			OnPlayerLevelChangeDelegate.Broadcast(NewLevel);
+			OnPlayerLevelChangeDelegate.Broadcast(NewLevel, bLevelUp);
 		});
 	
 	AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(GetAOAS()->GetHealthAttribute()).AddLambda([this](const FOnAttributeChangeData& Data) {OnHealthChange.Broadcast(Data.NewValue); });
@@ -68,7 +68,6 @@ void UOverlayController::BindCallbacksToDependencies()
 void UOverlayController::OnXPChange(int32 NewXP)
 {
 	const UXPInfo* XPInfo = GetAOPS()->XPInfo;
-
 	checkf(XPInfo, TEXT("Unable to find XPinfo, Enter in BP_PlayerState"));
 
 	const int32 CurrentLevel = XPInfo->FindLevelForXP(NewXP);

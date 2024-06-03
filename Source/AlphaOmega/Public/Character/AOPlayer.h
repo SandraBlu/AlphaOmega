@@ -30,6 +30,7 @@ public:
 	AAOPlayer();
 
 	virtual void PossessedBy(AController* NewController) override;
+	virtual void OnRep_PlayerState() override;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	class UAOEquipmentComponent* Gear;
@@ -72,6 +73,9 @@ public:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UNiagaraComponent* LevelUpFX;
+
+	virtual void OnRep_Stunned() override;
+	virtual void OnRep_Burned() override;
 
 protected:
 

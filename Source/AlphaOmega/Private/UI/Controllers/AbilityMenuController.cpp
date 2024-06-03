@@ -96,7 +96,7 @@ void UAbilityMenuController::SpendPoint()
 {
 	if (GetAOASC())
 	{
-		GetAOASC()->SpendAbilityPoint(SelectedAbility.Ability);
+		GetAOASC()->ServerSpendAbilityPoint(SelectedAbility.Ability);
 	}
 }
 
@@ -136,7 +136,7 @@ void UAbilityMenuController::AbilityInputButtonPressed(const FGameplayTag& SlotT
 	if (!SelectedAbilityType.MatchesTagExact(AbilityType)) return;
 
 	//assign or reassign ability to new slot
-	GetAOASC()->ActivateAbility(SelectedAbility.Ability, SlotTag);
+	GetAOASC()->ServerEquipAbility(SelectedAbility.Ability, SlotTag);
 }
 
 void UAbilityMenuController::OnAbilityActivated(const FGameplayTag& AbilityTag, const FGameplayTag& Status, const FGameplayTag& Slot, const FGameplayTag& PrevSlot)

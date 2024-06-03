@@ -12,7 +12,7 @@
 
 void UAOAbilityComp::AbilityActorInfoInit()
 {
-	OnGameplayEffectAppliedDelegateToSelf.AddUObject(this, &UAOAbilityComp::EffectApplied);
+	OnGameplayEffectAppliedDelegateToSelf.AddUObject(this, &UAOAbilityComp::ClientEffectApplied);
 }
 
 void UAOAbilityComp::AddGrantedAbilities(const TArray<TSubclassOf<UGameplayAbility>>& GrantedAbilities)
@@ -143,6 +143,62 @@ FGameplayTag UAOAbilityComp::GetInputTagFromAbilityTag(const FGameplayTag& Abili
 	return FGameplayTag();
 }
 
+bool UAOAbilityComp::SlotIsEmpty(const FGameplayTag& Slot)
+{
+	FScopedAbilityListLock ActiveScopeLoc(*this);
+	for (FGameplayAbilitySpec& AbilitySpec : GetActivatableAbilities())
+	{
+		if (AbilityHasSlot(AbilitySpec, Slot))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool UAOAbilityComp::AbilityHasSlot(const FGameplayAbilitySpec& Spec, const FGameplayTag& Slot)
+{
+	return Spec.DynamicAbilityTags.HasTagExact(Slot);
+}
+
+bool UAOAbilityComp::AbilityHasAnySlot(const FGameplayAbilitySpec& Spec)
+{
+	return Spec.DynamicAbilityTags.HasTag(FGameplayTag::RequestGameplayTag(FName("InputTag")));
+}
+
+FGameplayAbilitySpec* UAOAbilityComp::GetSpecWithSlot(const FGameplayTag& Slot)
+{
+	FScopedAbilityListLock ActiveScopeLock(*this);
+	for (FGameplayAbilitySpec& AbilitySpec : GetActivatableAbilities())
+	{
+		if (AbilitySpec.DynamicAbilityTags.HasTagExact(Slot))
+		{
+			return &AbilitySpec;
+		}
+	}
+	return nullptr;
+}
+
+bool UAOAbilityComp::IsPassiveAbility(const FGameplayAbilitySpec& Spec) const
+{
+	const UAbilityInfo* AbilityInfo = UAOBFL::GetAbilityInfo(GetAvatarActor());
+	const FGameplayTag AbilityTag = GetAbilityTagFromSpec(Spec);
+	const FAOAbilityInfo& Info = AbilityInfo->FindAbilityInfoForTag(AbilityTag);
+	const FGameplayTag AbilityType = Info.AbilityType;
+	return AbilityType.MatchesTagExact(FAOGameplayTags::Get().ability_type_passive);
+}
+
+void UAOAbilityComp::AssignSlotToAbility(FGameplayAbilitySpec& Spec, const FGameplayTag& Slot)
+{
+	ClearInputSlot(&Spec);
+	Spec.DynamicAbilityTags.AddTag(Slot);
+}
+
+void UAOAbilityComp::MulticastActivatePassiveEffect_Implementation(const FGameplayTag& AbilityTag, bool bActivate)
+{
+	ActivatePassiveEffect.Broadcast(AbilityTag, bActivate);
+}
+
 FGameplayAbilitySpec* UAOAbilityComp::GetSpecFromAbilityTag(const FGameplayTag& AbilityTag)
 {
 	FScopedAbilityListLock ActiveScopeLock(*this);
@@ -165,14 +221,20 @@ void UAOAbilityComp::UpgradeAttribute(const FGameplayTag& AttributeTag)
 	{
 		if (IPlayerInterface::Execute_GetAttributePoints(GetAvatarActor()) > 0)
 		{
-			FGameplayEventData Payload;
-			Payload.EventTag = AttributeTag;
-			Payload.EventMagnitude = .5f;
-
-			UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetAvatarActor(), AttributeTag, Payload);
-
-			IPlayerInterface::Execute_AddToAttributePoints(GetAvatarActor(), -1);
+			ServerUpgradeAttribute(AttributeTag);
 		}
+	}
+}
+
+void UAOAbilityComp::ServerUpgradeAttribute_Implementation(const FGameplayTag& AttributeTag)
+{
+	FGameplayEventData Payload;
+	Payload.EventTag = AttributeTag;
+	Payload.EventMagnitude = 1.f;
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetAvatarActor(), AttributeTag, Payload);
+	if (GetAvatarActor()->Implements<UPlayerInterface>())
+	{
+		IPlayerInterface::Execute_AddToAttributePoints(GetAvatarActor(), -1);
 	}
 }
 
@@ -188,12 +250,13 @@ void UAOAbilityComp::UpdateAbilityStatus(int32 Level)
 			FGameplayAbilitySpec AbilitySpec = FGameplayAbilitySpec(Info.Ability, 1);
 			AbilitySpec.DynamicAbilityTags.AddTag(FAOGameplayTags::Get().ability_status_available);
 			GiveAbility(AbilitySpec);
-			AbilityStatusUpdate(Info.AbilityTag, FAOGameplayTags::Get().ability_status_available, 1);
+			MarkAbilitySpecDirty(AbilitySpec);
+			ClientAbilityStatusUpdate(Info.AbilityTag, FAOGameplayTags::Get().ability_status_available, 1);
 		}
 	}
 }
 
-void UAOAbilityComp::SpendAbilityPoint(const FGameplayTag& AbilityTag)
+void UAOAbilityComp::ServerSpendAbilityPoint_Implementation(const FGameplayTag& AbilityTag)
 {
 	if (FGameplayAbilitySpec* AbilitySpec = GetSpecFromAbilityTag(AbilityTag))
 	{
@@ -201,7 +264,7 @@ void UAOAbilityComp::SpendAbilityPoint(const FGameplayTag& AbilityTag)
 		{
 			IPlayerInterface::Execute_AddToAbilityPoints(GetAvatarActor(), -1);
 		}
-
+		
 		const FAOGameplayTags GameplayTags = FAOGameplayTags::Get();
 		FGameplayTag Status = GetStatusTagFromSpec(*AbilitySpec);
 		if (Status.MatchesTagExact(GameplayTags.ability_status_available))
@@ -214,11 +277,12 @@ void UAOAbilityComp::SpendAbilityPoint(const FGameplayTag& AbilityTag)
 		{
 			AbilitySpec->Level += 1;
 		}
-		AbilityStatusUpdate(AbilityTag, Status, AbilitySpec->Level);
+		ClientAbilityStatusUpdate(AbilityTag, Status, AbilitySpec->Level);
+		MarkAbilitySpecDirty(*AbilitySpec);
 	}
 }
 
-void UAOAbilityComp::ActivateAbility(const FGameplayTag& AbilityTag, const FGameplayTag& Slot)
+void UAOAbilityComp::ServerEquipAbility_Implementation(const FGameplayTag& AbilityTag, const FGameplayTag& Slot)
 {
 	if (FGameplayAbilitySpec* AbilitySpec = GetSpecFromAbilityTag(AbilityTag))
 	{
@@ -227,27 +291,49 @@ void UAOAbilityComp::ActivateAbility(const FGameplayTag& AbilityTag, const FGame
 		const FGameplayTag& Status = GetStatusTagFromSpec(*AbilitySpec);
 
 		const bool bStatusValid = Status == GameplayTags.ability_status_active || Status == GameplayTags.ability_status_unlocked;
-		if (bStatusValid) 
-		{//remove input tag from ability
-			ClearInputTagFromSlottedAbility(Slot);
-			ClearInputSlot(AbilitySpec);
-			//assign new ability to slot
-			AbilitySpec->DynamicAbilityTags.AddTag(Slot);
-			if (Status.MatchesTagExact(GameplayTags.ability_status_unlocked))
+		if (bStatusValid)
+		{
+
+			// Handle activation/deactivation for passive abilities
+
+			if (!SlotIsEmpty(Slot)) // There is an ability in this slot already. Deactivate and clear its slot.
 			{
-				AbilitySpec->DynamicAbilityTags.RemoveTag(GameplayTags.ability_status_unlocked);
+				FGameplayAbilitySpec* SpecWithSlot = GetSpecWithSlot(Slot);
+				if (SpecWithSlot)
+				{
+					// is that ability the same as this ability? If so, we can return early.
+					if (AbilityTag.MatchesTagExact(GetAbilityTagFromSpec(*SpecWithSlot)))
+					{
+						ClientEquipAbility(AbilityTag, GameplayTags.ability_status_active, Slot, PrevSlot);
+						return;
+					}
+
+					if (IsPassiveAbility(*SpecWithSlot))
+					{
+						MulticastActivatePassiveEffect(GetAbilityTagFromSpec(*SpecWithSlot), false);
+						DeactivatePassiveAbility.Broadcast(GetAbilityTagFromSpec(*SpecWithSlot));
+					}
+
+					ClearInputSlot(SpecWithSlot);
+				}
+			}
+
+			if (!AbilityHasAnySlot(*AbilitySpec)) // Ability doesn't yet have a slot (it's not active)
+			{
+				if (IsPassiveAbility(*AbilitySpec))
+				{
+					TryActivateAbility(AbilitySpec->Handle);
+					MulticastActivatePassiveEffect(AbilityTag, true);
+				}
+				AbilitySpec->DynamicAbilityTags.RemoveTag(GetStatusTagFromSpec(*AbilitySpec));
 				AbilitySpec->DynamicAbilityTags.AddTag(GameplayTags.ability_status_active);
 			}
+			AssignSlotToAbility(*AbilitySpec, Slot);
+			MarkAbilitySpecDirty(*AbilitySpec);
 		}
-		AbilityActivated.Broadcast(AbilityTag, GameplayTags.ability_status_active, Slot, PrevSlot);
-		//BroadcastActivatedAbility(AbilityTag, , Slot, PrevSlot);
+		ClientEquipAbility(AbilityTag, GameplayTags.ability_status_active, Slot, PrevSlot);
 	}
 }
-
-//void UAOAbilityComp::BroadcastActivatedAbility(const FGameplayTag& AbilityTag, const FGameplayTag& Status, const FGameplayTag& Slot, const FGameplayTag& PrevSlot)
-//{
-//	AbilityActivated.Broadcast(AbilityTag, Status, Slot, PrevSlot);
-//}
 
 void UAOAbilityComp::ClearInputSlot(FGameplayAbilitySpec* Spec)
 {
@@ -255,16 +341,22 @@ void UAOAbilityComp::ClearInputSlot(FGameplayAbilitySpec* Spec)
 	Spec->DynamicAbilityTags.RemoveTag(Slot);
 }
 
-void UAOAbilityComp::ClearInputTagFromSlottedAbility(const FGameplayTag& Slot)
+void UAOAbilityComp::ClearAbilityOfSlot(const FGameplayTag& Slot)
 {
 	FScopedAbilityListLock ActiveScopeLock(*this);
-	for (FGameplayAbilitySpec& Spec : GetActivatableAbilities())
-	{
-		if (AbilityHasInputSlot(&Spec, Slot))
-		{
-			ClearInputSlot(&Spec);
-		}
-	}
+ 	for (FGameplayAbilitySpec& Spec : GetActivatableAbilities())
+ 	{
+ 		if (AbilityHasInputSlot(&Spec, Slot))
+ 		{
+ 			ClearInputSlot(&Spec);
+ 		}
+ 	}
+}
+
+void UAOAbilityComp::ClientEquipAbility_Implementation(const FGameplayTag& AbilityTag, const FGameplayTag& Status,
+	const FGameplayTag& Slot, const FGameplayTag& PreviousSlot)
+{
+	AbilityActivated.Broadcast(AbilityTag, Status, Slot, PreviousSlot);
 }
 
 bool UAOAbilityComp::GetDescriptionsByAbilityType(const FGameplayTag& AbilityTag, FString& OutDescription, FString& OutNextLevelDescription)
@@ -303,7 +395,25 @@ bool UAOAbilityComp::AbilityHasInputSlot(FGameplayAbilitySpec* Spec, const FGame
 	return false;
 }
 
-void UAOAbilityComp::EffectApplied(UAbilitySystemComponent* ASComp, const FGameplayEffectSpec& EffectSpec, FActiveGameplayEffectHandle EffectHandle)
+void UAOAbilityComp::OnRep_ActivateAbilities()
+{
+	Super::OnRep_ActivateAbilities();
+
+	if (!bAbilityGranted)
+	{
+		bAbilityGranted = true;
+		AbilityGivenDelegate.Broadcast();
+	}
+}
+
+void UAOAbilityComp::ClientAbilityStatusUpdate_Implementation(const FGameplayTag& AbilityTag,
+	const FGameplayTag& StatusTag, int32 AbilityLevel)
+{
+	AbilityStatusChange.Broadcast(AbilityTag, StatusTag, AbilityLevel);
+}
+
+void UAOAbilityComp::ClientEffectApplied_Implementation(UAbilitySystemComponent* ASComp,
+                                                        const FGameplayEffectSpec& EffectSpec, FActiveGameplayEffectHandle EffectHandle)
 {
 	//GEngine->AddOnScreenDebugMessage(1, 8.f, FColor::Magenta, FString("Effect Applied!"));
 	FGameplayTagContainer TagContainer;
@@ -312,9 +422,4 @@ void UAOAbilityComp::EffectApplied(UAbilitySystemComponent* ASComp, const FGamep
 	{
 		EffectTags.Broadcast(TagContainer);
 	}
-}
-
-void UAOAbilityComp::AbilityStatusUpdate(const FGameplayTag& AbilityTag, const FGameplayTag& StatusTag, int32 AbilityLevel)
-{
-	AbilityStatusChange.Broadcast(AbilityTag, StatusTag, AbilityLevel);
 }
