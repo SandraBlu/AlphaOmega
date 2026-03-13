@@ -4,7 +4,43 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "GameplayEffectTypes.h"
 #include "EffectActor.generated.h"
+
+struct FActiveGameplayEffectHandle;
+class UGameplayEffect;
+class UAbilitySystemComponent;
+class UStaticMeshComponent;
+
+UENUM(BlueprintType)
+enum class EApplyEffectPolicy: uint8
+{
+	ApplyOnOverlap,
+	ApplyOnEndOverlap,
+	DoNotApply
+};
+
+UENUM(BlueprintType)
+enum class ERemoveEffectPolicy: uint8
+{
+	RemoveOnEndOverlap,
+	DoNotRemove
+};
+
+USTRUCT(BlueprintType)
+struct FEffectType
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Effects")
+	TSubclassOf<UGameplayEffect> GameplayEffect;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Effects")
+	EApplyEffectPolicy ApplicationPolicy = EApplyEffectPolicy::DoNotApply;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Effects")
+	ERemoveEffectPolicy RemovalPolicy = ERemoveEffectPolicy::DoNotRemove;
+};
 
 UCLASS()
 class ALPHAOMEGA_API AEffectActor : public AActor
@@ -12,15 +48,41 @@ class ALPHAOMEGA_API AEffectActor : public AActor
 	GENERATED_BODY()
 	
 public:	
-	// Sets default values for this actor's properties
+	
 	AEffectActor();
 
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	UFUNCTION(BlueprintCallable)
+	void ApplyEffectToTarget(AActor* TargetActor, const FEffectType& Effect);
+	
+	UFUNCTION(BlueprintCallable)
+	void OnOverlap(AActor* TargetActor);
+	
+	UFUNCTION(BlueprintCallable)
+	void OnEndOverlap(AActor* TargetActor);
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effects")
+	bool bDestroyOnEffectApplication = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effects")
+	bool bApplyEffectToEnemy = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effects")
+	EApplyEffectPolicy ApplyInfiniteEffect = EApplyEffectPolicy::DoNotApply;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Effects")
+	ERemoveEffectPolicy RemoveInfiniteEffect = ERemoveEffectPolicy::RemoveOnEndOverlap;
+
+	TMap<FActiveGameplayEffectHandle, UAbilitySystemComponent*> ActiveEffectHandles;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= "Effects")
+	TArray<FEffectType> Effects;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= "Effects")
+	float ActorLevel = 1.f;
+
+private:
+
+	UPROPERTY(VisibleAnywhere)
+	UStaticMeshComponent* Mesh;
 
 };

@@ -4,25 +4,28 @@
 
 #include "CoreMinimal.h"
 #include "AbilitySystemComponent.h"
+#include "AbilitySystemInterface.h"
 #include "NiagaraSystem.h"
 #include "GameFramework/Character.h"
+#include "Interface/CombatInterface.h"
 #include "BaseCharacter.generated.h"
 
+class UCombatComponent;
 class UNiagaraSystem;
 class UAbilitySystemComponent;
 class UAttributeSet;
 class UMotionWarpingComponent;
 
 UCLASS()
-class ALPHAOMEGA_API ABaseCharacter : public ACharacter
+class ALPHAOMEGA_API ABaseCharacter : public ACharacter, public IAbilitySystemInterface, public ICombatInterface
 {
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this character's properties
+
 	ABaseCharacter();
 
-virtual void Tick(float DeltaSeconds) override;
+	virtual void Tick(float DeltaSeconds) override;
 
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
@@ -30,8 +33,8 @@ virtual void Tick(float DeltaSeconds) override;
 	UAttributeSet* GetAttributeSet() const { return AttributeSet; }
 
 	//Combat Interface
-	//virtual UPawnCombatComponent* GetPawnCombatComponent() const override;
-	/*virtual UAnimMontage* GetHitReactMontage_Implementation() override;
+	virtual UCombatComponent* GetCombatComponent() const override;
+	virtual UAnimMontage* GetHitReactMontage_Implementation() override;
 	virtual UAnimMontage* GetStunnedMontage_Implementation() override;
 	virtual bool IsDead_Implementation() const override;
 	virtual AActor* GetAvatar_Implementation() override;
@@ -46,7 +49,7 @@ virtual void Tick(float DeltaSeconds) override;
 
 	FOnASCRegistered OnASCRegistered;
 	FOnDeath OnDeath;
-	FOnDamageSignature OnDamageDelegate;*/
+	FOnDamageSignature OnDamageDelegate;
 	
 protected:
 	
@@ -58,8 +61,8 @@ protected:
 	UPROPERTY()
 	UAttributeSet* AttributeSet;
 	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Components")
-	UMotionWarpingComponent* MotionWarpingComponent;
+	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Components")
+	//UMotionWarpingComponent* MotionWarpingComponent;
 	
 	virtual void InitAbilityActorInfo();
 	void ApplyEffectToSelf(TSubclassOf<UGameplayEffect> GameplayEffectClass, float Level) const;
@@ -79,12 +82,12 @@ protected:
 	TSubclassOf<UGameplayEffect>VitalAttributes;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Character Class Defaults")
-	ECharacterClass CharacterClass = ECharacterClass::Ranger;*/
+	ECharacterClass CharacterClass = ECharacterClass::Ranger;
 	
 	bool bDead = false;
 	
-	//UPROPERTY(EditAnywhere, Category= "Combat")
-	//TArray<FTaggedMontage> AttackMontages;
+	UPROPERTY(EditAnywhere, Category= "Combat")
+	TArray<FTaggedMontage> AttackMontages;
 	
 	UPROPERTY(EditAnywhere, Category="Combat")
 	FName HandRSocket;
@@ -104,8 +107,8 @@ protected:
 	//UPROPERTY(VisibleAnywhere)
 	//UDebuffNiagaraComponent* EffectDebuffComponent;
 
-	//UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
-	//UPawnCombatComponent* CombatComp;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UCombatComponent* CombatComp;
 	
 private:
 	
